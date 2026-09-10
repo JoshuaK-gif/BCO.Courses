@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+/*
+ * BCO Courses — brand design tokens
+ * Bridge Collective Opportunities website colors:
+ * Primary Blue #2563eb (headings, nav, CTAs)
+ * Secondary Green #16a34a (success, badges, secondary actions)
+ * Accent Orange #f97316 (hover states, highlights)
+ * Background #eef0fa (page background)
+ */
+@theme {
+  /* Primary — BCO Blue (headings, navigation, structure) */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+  --color-brand-950: #172554;
+
+  /* Secondary — BCO Green (success, badges, secondary actions) */
+  --color-teal-50: #f0fdf4;
+  --color-teal-100: #dcfce7;
+  --color-teal-200: #bbf7d0;
+  --color-teal-300: #86efac;
+  --color-teal-400: #4ade80;
+  --color-teal-500: #22c55e;
+  --color-teal-600: #16a34a;
+  --color-teal-700: #15803d;
+  --color-teal-800: #166534;
+  --color-teal-900: #14532d;
+
+  /* Accent — BCO Orange (hover states, highlights, CTAs) */
+  --color-gold-50: #fff7ed;
+  --color-gold-100: #ffedd5;
+  --color-gold-200: #fed7aa;
+  --color-gold-300: #fdba74;
+  --color-gold-400: #fb923c;
+  --color-gold-500: #f97316;
+  --color-gold-600: #ea580c;
+  --color-gold-700: #c2410c;
+  --color-gold-800: #9a3412;
+  --color-gold-900: #7c2d12;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  @apply bg-white text-gray-800 antialiased;
+}
+
+/* Focus visibility for keyboard users (accessibility) */
+:focus-visible {
+  outline: 2px solid var(--color-gold-500);
+  outline-offset: 2px;
+}
+
+/* Decorative bridge arc used in hero / section headings */
+.bridge-arc {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-brand-500) 25%,
+    var(--color-teal-500) 50%,
+    var(--color-gold-500) 75%,
+    transparent 100%
+  );
+  height: 4px;
+  border-radius: 9999px;
+  opacity: 0.9;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-brand-600), var(--color-teal-600));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Skip link for screen readers / keyboard nav */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+
+/* Button hover animation - fills from left to right */
+.btn-hover-fill {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+.btn-hover-fill::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: var(--color-gold-500);
+  transition: width 0.3s ease;
+  z-index: -1;
+}
+.btn-hover-fill:hover::before {
+  width: 100%;
+}
+
+/* Mobile menu animations */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.mobile-drawer-enter {
+  animation: slideInLeft 0.3s ease-out forwards;
+}
+
+.mobile-drawer-exit {
+  animation: slideOutLeft 0.3s ease-in forwards;
+}
+
+.mobile-backdrop-enter {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.mobile-backdrop-exit {
+  animation: fadeOut 0.3s ease-in forwards;
+}

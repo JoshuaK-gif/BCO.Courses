@@ -1,0 +1,127 @@
+// BCO Courses — standalone course discovery & affiliate platform
+// Part of the Bridge Collective Opportunities ecosystem.
+// This schema is intentionally independent from the main BCO website.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  icon        String?  // emoji or icon key
+  sortOrder   Int      @default(0)
+  showOnHome  Boolean  @default(true)
+  courses     Course[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model Provider {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  websiteUrl  String?
+  logoUrl     String?
+  description String?
+  // Admin-only commercial data (never exposed publicly)
+  commissionNote String?
+  courses    Course[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("providers")
+}
+
+model Course {
+  id               String  @id @default(cuid())
+  title            String
+  slug             String  @unique
+  shortDescription String
+  description      String
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  level       String? // Beginner | Intermediate | Advanced | All Levels
+  price       Float?
+  currency    String  @default("USD")
+  isFree      Boolean @default(false)
+  duration    String? // e.g. "6 hours" — free text, no fake data
+  certificate Boolean @default(false)
+  language    String? // e.g. "English"
+  format      String? // Self-paced | Instructor-led | Online
+
+  imageUrl String?
+
+  learningOutcomes String @default("[]") // "What you'll learn" bullets — admin editable (JSON array)
+  targetAudience   String @default("[]") // "Who this course is for" bullets (JSON array)
+  whyRecommended   String?  // BCO editorial note
+
+  affiliateUrl      String? // used by /go/[slug] redirect — admin managed
+  externalCourseUrl String? // non-affiliate public info link (optional)
+
+  rating       Float?  // only shown if provided by provider — never invented
+  featured     Boolean @default(false)
+  published    Boolean @default(false)
+  lastVerified DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  views  CourseView[]
+  clicks CourseClick[]
+
+  @@index([categoryId])
+  @@index([providerId])
+  @@index([published, featured])
+  @@index([slug])
+  @@map("courses")
+}
+
+model CourseView {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  path      String?  // page where the view happened
+  referrer  String?
+  createdAt DateTime @default(now())
+
+  @@index([courseId])
+  @@index([createdAt])
+  @@map("course_views")
+}
+
+model CourseClick {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  referrer  String?  // source page / UTM
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([courseId])
+  @@index([createdAt])
+  @@map("course_clicks")
+}
+
+model Setting {
+  key   String @id
+  value String
+
+  @@map("settings")
+}
