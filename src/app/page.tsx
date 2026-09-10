@@ -86,11 +86,26 @@ export default async function HomePage() {
     <>
       {/* ---------- Hero ---------- */}
       <section className="relative min-h-[50vh] overflow-hidden text-white sm:min-h-[60vh] lg:min-h-[70vh]">
-        {/* Background image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/hero-classroom.jpg')" }}
-        />
+        {/* Background image — responsive with AVIF/WebP */}
+        <picture className="absolute inset-0">
+          <source
+            type="image/avif"
+            srcSet="/hero-classroom-sm.avif 640w, /hero-classroom-md.avif 1024w, /hero-classroom-lg.avif 1920w"
+            sizes="100vw"
+          />
+          <source
+            type="image/webp"
+            srcSet="/hero-classroom-sm.webp 640w, /hero-classroom-md.webp 1024w, /hero-classroom-lg.webp 1920w"
+            sizes="100vw"
+          />
+          <img
+            src="/hero-classroom-md.jpg"
+            alt=""
+            className="h-full w-full object-cover"
+            fetchPriority="high"
+            decoding="async"
+          />
+        </picture>
         {/* Fading overlay - dark from left, transparent to right */}
         <div className="absolute inset-0 bg-gradient-to-r from-brand-900/90 via-brand-900/70 to-transparent" />
         {/* Subtle color tint */}

@@ -33,6 +33,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // suppressHydrationWarning: browser extensions (e.g. CRX Launcher) inject
     // attributes on <html> before React hydrates — that mismatch is harmless.
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preload" as="image" href="/hero-classroom-md.avif" imageSrcSet="/hero-classroom-sm.avif 640w, /hero-classroom-md.avif 1024w, /hero-classroom-lg.avif 1920w" imageSizes="100vw" />
+      </head>
       <body className="flex min-h-screen flex-col">
         <a href="#main-content" className="skip-link">
           Skip to main content
