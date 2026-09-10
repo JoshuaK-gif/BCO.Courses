@@ -184,7 +184,7 @@ export async function getAdminCourses(opts: { q?: string; page?: number; pageSiz
     const page = Math.max(1, opts.page || 1);
     const pageSize = opts.pageSize || 20;
     const where: Prisma.CourseWhereInput = opts.q
-      ? { title: { contains: opts.q, mode: "insensitive" } }
+      ? { title: { contains: opts.q } }
       : {};
     const [courses, total] = await Promise.all([
       db.course.findMany({

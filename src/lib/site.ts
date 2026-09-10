@@ -68,11 +68,11 @@ export function buildCourseWhere(params: {
   if (params.q?.trim()) {
     const q = params.q.trim();
     where.OR = [
-      { title: { contains: q, mode: "insensitive" } },
-      { shortDescription: { contains: q, mode: "insensitive" } },
-      { description: { contains: q, mode: "insensitive" } },
-      { category: { name: { contains: q, mode: "insensitive" } } },
-      { provider: { name: { contains: q, mode: "insensitive" } } },
+      { title: { contains: q } },
+      { shortDescription: { contains: q } },
+      { description: { contains: q } },
+      { category: { name: { contains: q } } },
+      { provider: { name: { contains: q } } },
     ];
   }
   if (params.category) where.category = { slug: params.category };
