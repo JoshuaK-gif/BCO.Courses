@@ -21,3 +21,6 @@ Thumbs.db
 
 public/uploads/
 homepage_check.html
+
+.vercel
+.env*
