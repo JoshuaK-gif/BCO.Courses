@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   slug: z.string().min(1).max(200),
@@ -15,25 +15,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    const course = await db.course.findUnique({
-      where: { slug: parsed.data.slug },
-      select: { id: true },
-    });
+    const db = await createClient();
+
+    const { data: course } = await db
+      .from("courses")
+      .select("id")
+      .eq("slug", parsed.data.slug)
+      .single();
+
     if (!course) {
-      // Do not reveal whether a course exists; silently accept.
       return NextResponse.json({ ok: true });
     }
 
-    await db.courseView.create({
-      data: {
-        courseId: course.id,
-        path: `/courses/${parsed.data.slug}`,
-        referrer: parsed.data.referrer?.slice(0, 1000),
-      },
+    await db.from("course_views").insert({
+      course_id: course.id,
+      path: `/courses/${parsed.data.slug}`,
+      referrer: parsed.data.referrer?.slice(0, 1000),
     });
 
     return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ ok: true }); // never break page UX for analytics
+    return NextResponse.json({ ok: true });
   }
 }

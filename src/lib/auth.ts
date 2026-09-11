@@ -1,49 +1,11 @@
-import crypto from "crypto";
 import { cookies } from "next/headers";
-import bcrypt from "bcryptjs";
-import {
-  createSessionToken,
-  verifySessionToken,
-  COOKIE_NAME,
-  type AdminSession,
-} from "@/lib/sessionToken";
-
-export { createSessionToken, verifySessionToken, COOKIE_NAME };
-export type { AdminSession };
+import { createClient } from "@/lib/supabase/server";
 
 /**
- * Env-based admin authentication for BCO Courses.
- * - ADMIN_USERNAME + ADMIN_PASSWORD (or ADMIN_PASSWORD_HASH) in env vars
- * - Signed session cookie (HMAC-SHA256 via Web Crypto)
- * - Single admin account in v1 — no user tables needed
+ * Admin authentication using Supabase Auth.
+ * - ENV-based credentials for initial admin signup
+ * - Supabase Auth for session management
  */
-
-function timingSafeEqualStr(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, "utf8");
-  const bufB = Buffer.from(b, "utf8");
-  if (bufA.length !== bufB.length) {
-    crypto.timingSafeEqual(bufA, bufA); // keep timing roughly constant
-    return false;
-  }
-  return crypto.timingSafeEqual(bufA, bufB);
-}
-
-export function verifyCredentials(username: string, password: string): boolean {
-  const envUser = process.env.ADMIN_USERNAME || "";
-  const envPassHash = process.env.ADMIN_PASSWORD_HASH;
-  const envPass = process.env.ADMIN_PASSWORD || "";
-
-  if (!envUser || (!envPassHash && !envPass)) return false;
-
-  const userOk = timingSafeEqualStr(username, envUser);
-  let passOk = false;
-  if (envPassHash) {
-    passOk = bcrypt.compareSync(password, envPassHash);
-  } else {
-    passOk = timingSafeEqualStr(password, envPass);
-  }
-  return userOk && passOk;
-}
 
 // ---- Simple in-memory login rate limiting (per IP) ----
 const attempts = new Map<string, { count: number; firstAt: number }>();
@@ -61,7 +23,6 @@ function cleanupExpiredEntries(): void {
 }
 
 export function isRateLimited(key: string): boolean {
-  // Periodically cleanup to prevent unbounded growth
   if (attempts.size > MAX_ENTRIES) {
     cleanupExpiredEntries();
   }
@@ -87,26 +48,17 @@ export function clearAttempts(key: string): void {
   attempts.delete(key);
 }
 
-// ---- Session cookie helpers ----
+export type AdminSession = { email: string };
+
 export async function getAdminSession(): Promise<AdminSession | null> {
-  const cookieStore = await cookies();
-  return verifySessionToken(cookieStore.get(COOKIE_NAME)?.value);
-}
-
-export async function setSessionCookie(username: string): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, await createSessionToken(username), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  });
-}
-
-export async function clearSessionCookie(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    return { email: user.email || "" };
+  } catch {
+    return null;
+  }
 }
 
 /** Guard for server actions — throws if not signed in. */

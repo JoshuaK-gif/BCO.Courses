@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 
 function slugify(text: string): string {
@@ -108,9 +108,14 @@ export async function saveCourse(formData: FormData): Promise<ActionState> {
     return { error: `${issue.path.join(".") || "field"}: ${issue.message}` };
   }
   const data = parsed.data;
+  const db = await createClient();
 
   // Uniqueness check for slug
-  const existing = await db.course.findUnique({ where: { slug: data.slug } });
+  const { data: existing } = await db
+    .from("courses")
+    .select("id")
+    .eq("slug", data.slug)
+    .single();
   const currentId = str(formData, "id");
   if (existing && existing.id !== currentId) {
     return { error: "A course with this slug already exists." };
@@ -119,34 +124,34 @@ export async function saveCourse(formData: FormData): Promise<ActionState> {
   const record = {
     title: data.title,
     slug: data.slug,
-    shortDescription: data.shortDescription,
+    short_description: data.shortDescription,
     description: data.description,
-    categoryId: data.categoryId,
-    providerId: data.providerId,
+    category_id: data.categoryId,
+    provider_id: data.providerId,
     level: data.level,
     price: data.isFree ? 0 : data.price,
     currency: data.currency,
-    isFree: data.isFree,
+    is_free: data.isFree,
     duration: data.duration,
     certificate: data.certificate,
     language: data.language,
     format: data.format,
-    imageUrl: data.imageUrl,
-    learningOutcomes: JSON.stringify(data.learningOutcomes),
-    targetAudience: JSON.stringify(data.targetAudience),
-    whyRecommended: data.whyRecommended,
-    affiliateUrl: data.affiliateUrl,
-    externalCourseUrl: data.externalCourseUrl,
+    image_url: data.imageUrl,
+    learning_outcomes: JSON.stringify(data.learningOutcomes),
+    target_audience: JSON.stringify(data.targetAudience),
+    why_recommended: data.whyRecommended,
+    affiliate_url: data.affiliateUrl,
+    external_course_url: data.externalCourseUrl,
     rating: data.rating,
     featured: data.featured,
     published: data.published,
-    lastVerified: data.lastVerified,
+    last_verified: data.lastVerified?.toISOString() ?? null,
   };
 
   if (currentId) {
-    await db.course.update({ where: { id: currentId }, data: record });
+    await db.from("courses").update(record).eq("id", currentId);
   } else {
-    await db.course.create({ data: record });
+    await db.from("courses").insert(record);
   }
 
   revalidatePath("/admin/courses");
@@ -159,7 +164,8 @@ export async function deleteCourse(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = str(formData, "id");
   if (!id) return;
-  await db.course.delete({ where: { id } });
+  const db = await createClient();
+  await db.from("courses").delete().eq("id", id);
   revalidatePath("/admin/courses");
   revalidatePath("/courses");
 }
@@ -170,13 +176,20 @@ export async function toggleCourseField(formData: FormData): Promise<void> {
   const field = str(formData, "field");
   const value = bool(formData, "value");
   if (!id) return;
-  
+
   const allowedFields = ["published", "featured"] as const;
   if (!allowedFields.includes(field as typeof allowedFields[number])) {
     return;
   }
-  
-  await db.course.update({ where: { id }, data: { [field]: value } });
+
+  const db = await createClient();
+  // Map camelCase field names to snake_case column names
+  const columnMap: Record<string, string> = {
+    published: "published",
+    featured: "featured",
+  };
+  const column = columnMap[field] || field;
+  await db.from("courses").update({ [column]: value }).eq("id", id);
   revalidatePath("/admin/courses");
   revalidatePath("/courses");
 }
@@ -205,15 +218,30 @@ export async function saveCategory(formData: FormData): Promise<void> {
     redirect("/admin/categories?error=invalid");
   }
   const id = str(formData, "id");
+  const db = await createClient();
 
   try {
     if (id) {
-      await db.category.update({ where: { id }, data });
+      await db.from("categories").update({
+        name: data.name,
+        description: data.description,
+        icon: data.icon,
+        sort_order: data.sortOrder,
+        show_on_home: data.showOnHome,
+      }).eq("id", id);
     } else {
-      await db.category.create({ data: { ...data, slug: slugify(data.name) } });
+      await db.from("categories").insert({
+        name: data.name,
+        slug: slugify(data.name),
+        description: data.description,
+        icon: data.icon,
+        sort_order: data.sortOrder,
+        show_on_home: data.showOnHome,
+      });
     }
   } catch (e: any) {
-    if (e?.code === "P2002") {
+    // Check for unique constraint violation (23505 is PostgreSQL unique_violation)
+    if (e?.code === "23505" || e?.message?.includes("unique")) {
       redirect("/admin/categories?error=duplicate");
     }
     redirect("/admin/categories?error=database");
@@ -227,12 +255,17 @@ export async function deleteCategory(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = str(formData, "id");
   if (!id) return;
-  const count = await db.course.count({ where: { categoryId: id } });
-  if (count > 0) {
-    // Block deletion while courses reference it — safe default.
+  const db = await createClient();
+
+  const { count } = await db
+    .from("courses")
+    .select("id", { count: "exact", head: true })
+    .eq("category_id", id);
+
+  if (count && count > 0) {
     redirect("/admin/categories?error=has-courses");
   }
-  await db.category.delete({ where: { id } });
+  await db.from("categories").delete().eq("id", id);
   revalidatePath("/admin/categories");
   revalidatePath("/categories");
 }
@@ -244,7 +277,7 @@ const providerSchema = z.object({
   websiteUrl: z.string().url().nullable(),
   logoUrl: z.string().url().nullable(),
   description: z.string().max(500).nullable(),
-  commissionNote: z.string().max(500).nullable(), // admin-only data
+  commissionNote: z.string().max(500).nullable(),
 });
 
 export async function saveProvider(formData: FormData): Promise<void> {
@@ -261,15 +294,29 @@ export async function saveProvider(formData: FormData): Promise<void> {
     redirect("/admin/providers?error=invalid");
   }
   const id = str(formData, "id");
+  const db = await createClient();
 
   try {
     if (id) {
-      await db.provider.update({ where: { id }, data });
+      await db.from("providers").update({
+        name: data.name,
+        website_url: data.websiteUrl,
+        logo_url: data.logoUrl,
+        description: data.description,
+        commission_note: data.commissionNote,
+      }).eq("id", id);
     } else {
-      await db.provider.create({ data: { ...data, slug: slugify(data.name) } });
+      await db.from("providers").insert({
+        name: data.name,
+        slug: slugify(data.name),
+        website_url: data.websiteUrl,
+        logo_url: data.logoUrl,
+        description: data.description,
+        commission_note: data.commissionNote,
+      });
     }
   } catch (e: any) {
-    if (e?.code === "P2002") {
+    if (e?.code === "23505" || e?.message?.includes("unique")) {
       redirect("/admin/providers?error=duplicate");
     }
     redirect("/admin/providers?error=database");
@@ -282,10 +329,16 @@ export async function deleteProvider(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = str(formData, "id");
   if (!id) return;
-  const count = await db.course.count({ where: { providerId: id } });
-  if (count > 0) {
+  const db = await createClient();
+
+  const { count } = await db
+    .from("courses")
+    .select("id", { count: "exact", head: true })
+    .eq("provider_id", id);
+
+  if (count && count > 0) {
     redirect("/admin/providers?error=has-courses");
   }
-  await db.provider.delete({ where: { id } });
+  await db.from("providers").delete().eq("id", id);
   revalidatePath("/admin/providers");
 }

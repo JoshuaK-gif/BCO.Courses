@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import {
-  verifyCredentials,
-  setSessionCookie,
   isRateLimited,
   recordFailedAttempt,
   clearAttempts,
@@ -21,15 +20,26 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => null);
-  const username = typeof body?.username === "string" ? body.username : "";
+  const email = typeof body?.email === "string" ? body.email : "";
   const password = typeof body?.password === "string" ? body.password : "";
 
-  if (!username || !password || !verifyCredentials(username, password)) {
+  if (!email || !password) {
     recordFailedAttempt(ip);
-    return NextResponse.json({ error: "Invalid username or password." }, { status: 401 });
+    return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error || !data.user) {
+    recordFailedAttempt(ip);
+    return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
   }
 
   clearAttempts(ip);
-  await setSessionCookie(username);
   return NextResponse.json({ ok: true });
 }

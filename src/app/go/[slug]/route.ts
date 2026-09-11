@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * /go/[slug] — secure affiliate redirect.
@@ -15,24 +15,26 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  let course: { id: string; affiliateUrl: string | null; published: boolean } | null = null;
+  let course: { id: string; affiliate_url: string | null; published: boolean } | null = null;
   try {
-    course = await db.course.findUnique({
-      where: { slug },
-      select: { id: true, affiliateUrl: true, published: true },
-    });
+    const db = await createClient();
+    const result = await db
+      .from("courses")
+      .select("id, affiliate_url, published")
+      .eq("slug", slug)
+      .single();
+    course = result.data;
   } catch {
-    // DB unreachable — fall through to the /courses redirect below.
+    // DB unreachable
   }
 
-  if (!course || !course.published || !course.affiliateUrl) {
+  if (!course || !course.published || !course.affiliate_url) {
     return NextResponse.redirect(new URL("/courses", req.url), 302);
   }
 
-  // Only allow http(s) destinations to prevent open-redirect abuse
   let destination: URL;
   try {
-    destination = new URL(course.affiliateUrl);
+    destination = new URL(course.affiliate_url);
     if (destination.protocol !== "https:" && destination.protocol !== "http:") {
       throw new Error("bad protocol");
     }
@@ -41,12 +43,11 @@ export async function GET(
   }
 
   try {
-    await db.courseClick.create({
-      data: {
-        courseId: course.id,
-        referrer: req.headers.get("referer")?.slice(0, 1000) ?? undefined,
-        userAgent: req.headers.get("user-agent")?.slice(0, 500) ?? undefined,
-      },
+    const db = await createClient();
+    await db.from("course_clicks").insert({
+      course_id: course.id,
+      referrer: req.headers.get("referer")?.slice(0, 1000) ?? null,
+      user_agent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
     });
   } catch {
     // Tracking failure must never block the redirect

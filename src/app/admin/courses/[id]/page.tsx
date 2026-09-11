@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import CourseForm from "@/components/admin/CourseForm";
-import { db } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 import { getCategoriesWithCounts, getProviderOptions } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -15,11 +15,15 @@ export default async function EditCoursePage({ params }: { params: Params }) {
   let categories: any[] = [];
   let providers: any[] = [];
   try {
-    [course, categories, providers] = await Promise.all([
-      db.course.findUnique({ where: { id } }),
+    const db = await createClient();
+    const [courseResult, catResult, provResult] = await Promise.all([
+      db.from("courses").select("*").eq("id", id).single(),
       getCategoriesWithCounts(),
       getProviderOptions(),
     ]);
+    course = courseResult.data;
+    categories = catResult;
+    providers = provResult;
   } catch {
     // Database not available
   }
@@ -50,28 +54,28 @@ export default async function EditCoursePage({ params }: { params: Params }) {
             id: course.id,
             title: course.title,
             slug: course.slug,
-            shortDescription: course.shortDescription,
+            shortDescription: course.short_description,
             description: course.description,
-            categoryId: course.categoryId,
-            providerId: course.providerId,
+            categoryId: course.category_id,
+            providerId: course.provider_id,
             level: course.level,
             price: course.price,
             currency: course.currency,
-            isFree: course.isFree,
+            isFree: course.is_free,
             duration: course.duration,
             certificate: course.certificate,
             language: course.language,
             format: course.format,
-            imageUrl: course.imageUrl,
-            learningOutcomes: typeof course.learningOutcomes === 'string' ? JSON.parse(course.learningOutcomes) : course.learningOutcomes,
-            targetAudience: typeof course.targetAudience === 'string' ? JSON.parse(course.targetAudience) : course.targetAudience,
-            whyRecommended: course.whyRecommended,
-            affiliateUrl: course.affiliateUrl,
-            externalCourseUrl: course.externalCourseUrl,
+            imageUrl: course.image_url,
+            learningOutcomes: typeof course.learning_outcomes === 'string' ? JSON.parse(course.learning_outcomes) : course.learning_outcomes,
+            targetAudience: typeof course.target_audience === 'string' ? JSON.parse(course.target_audience) : course.target_audience,
+            whyRecommended: course.why_recommended,
+            affiliateUrl: course.affiliate_url,
+            externalCourseUrl: course.external_course_url,
             rating: course.rating,
             featured: course.featured,
             published: course.published,
-            lastVerified: course.lastVerified,
+            lastVerified: course.last_verified,
           }}
         />
       </div>

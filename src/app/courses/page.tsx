@@ -5,7 +5,7 @@ import SearchBar from "@/components/SearchBar";
 import CourseFilters from "@/components/CourseFilters";
 import CourseCard from "@/components/CourseCard";
 import Breadcrumbs from "@/components/Breadcrumbs";
-import { buildCourseWhere, PAGE_SIZE } from "@/lib/site";
+import { PAGE_SIZE } from "@/lib/site";
 import {
   getPublishedCourses,
   getCategoriesWithCounts,
@@ -39,10 +39,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: SP }
   const duration = first(sp.duration);
   const page = Math.max(1, Number(first(sp.page)) || 1);
 
-  const where = buildCourseWhere({ q, category, provider, level, price, cert, format, duration });
-
   const [{ courses, total }, categories, providers] = await Promise.all([
-    getPublishedCourses({ where, page, pageSize: PAGE_SIZE }),
+    getPublishedCourses({ q, category, provider, level, price, cert, format, duration, page, pageSize: PAGE_SIZE }),
     getCategoriesWithCounts(),
     getProviderOptions(),
   ]);
@@ -86,7 +84,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: SP }
         <section aria-label="Course results" className="lg:order-2">
           <p className="mb-4 text-sm text-gray-500" role="status">
             {total} course{total === 1 ? "" : "s"} found
-            {q ? ` for “${q}”` : ""}
+            {q ? ` for "${q}"` : ""}
           </p>
 
           {courses.length === 0 ? (

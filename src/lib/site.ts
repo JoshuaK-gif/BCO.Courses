@@ -1,15 +1,55 @@
-import { Prisma } from "@prisma/client";
-
-export type CourseWithRelations = Prisma.CourseGetPayload<{
-  include: { category: true; provider: true };
-}>;
+export type CourseWithRelations = {
+  id: string;
+  title: string;
+  slug: string;
+  shortDescription: string;
+  description: string;
+  categoryId: string;
+  providerId: string;
+  level: string | null;
+  price: number | null;
+  currency: string;
+  isFree: boolean;
+  duration: string | null;
+  certificate: boolean;
+  language: string | null;
+  format: string | null;
+  imageUrl: string | null;
+  learningOutcomes: string;
+  targetAudience: string;
+  whyRecommended: string | null;
+  affiliateUrl: string | null;
+  externalCourseUrl: string | null;
+  rating: number | null;
+  featured: boolean;
+  published: boolean;
+  lastVerified: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    icon: string | null;
+    sortOrder: number;
+    showOnHome: boolean;
+  };
+  provider: {
+    id: string;
+    name: string;
+    slug: string;
+    websiteUrl: string | null;
+    logoUrl: string | null;
+    description: string | null;
+  };
+};
 
 export const SITE = {
   name: "BCO Courses",
   tagline: "Learn. Prepare. Take Your Next Opportunity.",
   parentBrand: "Bridge Collective Opportunities",
   parentBrandShort: "BCO",
-  // Main BCO platform — the only connection between the two products
   bcoUrl: "https://www.bridgecollectiveopport.org/",
   description:
     "Discover courses that help you build the skills, knowledge and confidence you need to pursue jobs, scholarships, grants, fellowships, internships and other opportunities.",
@@ -53,7 +93,7 @@ export function formatDate(date: Date | string | null | undefined): string {
   });
 }
 
-export function buildCourseWhere(params: {
+export type CourseFilters = {
   q?: string;
   category?: string;
   provider?: string;
@@ -62,56 +102,10 @@ export function buildCourseWhere(params: {
   cert?: string;
   format?: string;
   duration?: string;
-}): Prisma.CourseWhereInput {
-  const where: Prisma.CourseWhereInput = { published: true };
+};
 
-  if (params.q?.trim()) {
-    const q = params.q.trim();
-    where.OR = [
-      { title: { contains: q } },
-      { shortDescription: { contains: q } },
-      { description: { contains: q } },
-      { category: { name: { contains: q } } },
-      { provider: { name: { contains: q } } },
-    ];
-  }
-  if (params.category) where.category = { slug: params.category };
-  if (params.provider) where.provider = { slug: params.provider };
-  if (params.level) where.level = params.level;
-  if (params.price === "free") where.isFree = true;
-  if (params.price === "paid") where.isFree = false;
-  if (params.cert === "yes") where.certificate = true;
-  if (params.cert === "no") where.certificate = false;
-  if (params.format) where.format = params.format;
-  if (params.duration === "short") {
-    // Under 5 hours: match durations containing "hour" but exclude "20" or higher numbers
-    where.duration = { contains: "hour" };
-    where.AND = [
-      { duration: { not: { contains: "20" } } },
-      { duration: { not: { contains: "30" } } },
-      { duration: { not: { contains: "40" } } },
-      { duration: { not: { contains: "50" } } },
-    ];
-  } else if (params.duration === "medium") {
-    // 5-20 hours: match durations containing "5" through "19" hours
-    where.duration = { contains: "hour" };
-    where.AND = [
-      { duration: { not: { contains: "20" } } },
-      { duration: { not: { contains: "30" } } },
-      { duration: { not: { contains: "40" } } },
-      { duration: { not: { contains: "50" } } },
-    ];
-  } else if (params.duration === "long") {
-    // 20+ hours: match durations containing "20" or higher numbers
-    where.OR = [
-      { duration: { contains: "20 hour" } },
-      { duration: { contains: "30 hour" } },
-      { duration: { contains: "40 hour" } },
-      { duration: { contains: "50 hour" } },
-    ];
-  }
-
-  return where;
+export function buildCourseFilters(params: CourseFilters) {
+  return params;
 }
 
 export function cn(...classes: Array<string | false | null | undefined>): string {

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 import { saveProvider, deleteProvider } from "@/app/admin/actions";
 
 export const dynamic = "force-dynamic";
@@ -8,12 +8,27 @@ type SP = Promise<Record<string, string | string[] | undefined>>;
 export default async function AdminProvidersPage({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const error = typeof sp.error === "string" ? sp.error : undefined;
+
   let providers: any[] = [];
   try {
-    providers = await db.provider.findMany({
-      orderBy: { name: "asc" },
-      include: { _count: { select: { courses: true } } },
-    });
+    const db = await createClient();
+    const { data } = await db
+      .from("providers")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (data) {
+      // Get course counts for each provider
+      providers = await Promise.all(
+        data.map(async (p: any) => {
+          const { count } = await db
+            .from("courses")
+            .select("id", { count: "exact", head: true })
+            .eq("provider_id", p.id);
+          return { ...p, _count: { courses: count || 0 } };
+        })
+      );
+    }
   } catch {
     // Database not available
   }
@@ -82,7 +97,7 @@ export default async function AdminProvidersPage({ searchParams }: { searchParam
                   </label>
                   <label className="block text-sm">
                     <span className="font-medium text-gray-700">Website URL</span>
-                    <input name="websiteUrl" type="url" defaultValue={p.websiteUrl ?? ""} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                    <input name="websiteUrl" type="url" defaultValue={p.website_url ?? ""} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
                   </label>
                 </div>
                 <label className="block text-sm">
@@ -91,7 +106,7 @@ export default async function AdminProvidersPage({ searchParams }: { searchParam
                 </label>
                 <label className="block text-sm">
                   <span className="font-medium text-gray-700">Commission note (private)</span>
-                  <textarea name="commissionNote" rows={2} defaultValue={p.commissionNote ?? ""} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                  <textarea name="commissionNote" rows={2} defaultValue={p.commission_note ?? ""} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
                 </label>
                 <div className="flex gap-2">
                   <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">

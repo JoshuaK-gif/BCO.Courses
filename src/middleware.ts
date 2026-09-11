@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, COOKIE_NAME } from "@/lib/sessionToken";
+import { updateSession } from "@/lib/supabase/middleware";
 
 /**
- * Guard all /admin routes (except the login page). The session cookie's
- * HMAC signature is verified with Web Crypto, which works on the Edge
- * runtime where node:crypto is unavailable.
+ * Guard all /admin routes (except the login page).
+ * Uses Supabase Auth session verification.
  */
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -13,14 +12,18 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const session = await verifySessionToken(req.cookies.get(COOKIE_NAME)?.value);
-  if (!session) {
+  const { supabase, supabaseResponse } = await updateSession(req);
+
+  // Check if user is authenticated
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user && pathname.startsWith("/admin")) {
     const loginUrl = new URL("/admin/login", req.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  return supabaseResponse;
 }
 
 export const config = {

@@ -4,7 +4,9 @@ export const dynamic = "force-dynamic";
 
 export default function AdminSettingsPage() {
   const rows = [
-    { key: "DATABASE_URL", desc: "PostgreSQL connection string.", example: "postgresql://user:pass@host:5432/bco_courses" },
+    { key: "NEXT_PUBLIC_SUPABASE_URL", desc: "Supabase project URL.", example: "https://your-project.supabase.co" },
+    { key: "NEXT_PUBLIC_SUPABASE_ANON_KEY", desc: "Supabase anonymous/public key.", example: "eyJhbGciOi..." },
+    { key: "SUPABASE_SERVICE_ROLE_KEY", desc: "Supabase service role key (server-side only, never exposed to browser).", example: "eyJhbGciOi..." },
     { key: "ADMIN_USERNAME", desc: "Admin login username.", example: "bcoadmin" },
     { key: "ADMIN_PASSWORD", desc: "Admin login password (or use ADMIN_PASSWORD_HASH for a bcrypt hash).", example: "a-strong-password" },
     { key: "AUTH_SECRET", desc: "Secret used to sign admin session cookies. Use a long random string.", example: "openssl rand -hex 32" },
@@ -46,12 +48,12 @@ export default function AdminSettingsPage() {
       <section className="mt-8 rounded-xl border border-brand-100 bg-brand-50 p-6">
         <h2 className="font-semibold text-brand-900">Deployment Checklist</h2>
         <ul className="mt-3 space-y-2 text-sm text-gray-700">
-          <li>1. Provision PostgreSQL (Neon, Supabase, RDS…) and set <code className="rounded bg-white px-1">DATABASE_URL</code>.</li>
-          <li>2. Run <code className="rounded bg-white px-1">npx prisma migrate deploy</code>, then <code className="rounded bg-white px-1">npm run db:seed</code> if you want the sample data.</li>
+          <li>1. Create a Supabase project and set <code className="rounded bg-white px-1">NEXT_PUBLIC_SUPABASE_URL</code> and <code className="rounded bg-white px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.</li>
+          <li>2. Run the SQL migration in the Supabase SQL Editor (see <code className="rounded bg-white px-1">supabase/migrations/001_initial_schema.sql</code>).</li>
           <li>3. Set <code className="rounded bg-white px-1">ADMIN_USERNAME</code>, <code className="rounded bg-white px-1">ADMIN_PASSWORD</code> and a strong <code className="rounded bg-white px-1">AUTH_SECRET</code>.</li>
           <li>4. Set <code className="rounded bg-white px-1">NEXT_PUBLIC_SITE_URL</code> to the final domain (e.g. https://courses.bridgecollectiveopport.org).</li>
           <li>5. Replace seeded sample courses with real courses and verified affiliate URLs.</li>
-          <li>6. Add the “Courses” button on the main BCO website linking here.</li>
+          <li>6. Add the &quot;Courses&quot; button on the main BCO website linking here.</li>
         </ul>
       </section>
     </div>

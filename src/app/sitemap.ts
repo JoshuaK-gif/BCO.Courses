@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
-import { db } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 import { SITE } from "@/lib/site";
 
-export const revalidate = 3600; // refresh hourly
+export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
@@ -19,31 +19,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const [categories, courses] = await Promise.all([
-      db.category.findMany({ select: { slug: true, updatedAt: true } }),
-      db.course.findMany({
-        where: { published: true },
-        select: { slug: true, updatedAt: true },
-      }),
+    const db = await createClient();
+
+    const [catResult, courseResult] = await Promise.all([
+      db.from("categories").select("slug, updated_at"),
+      db.from("courses").select("slug, updated_at").eq("published", true),
     ]);
+
+    const categories = catResult.data || [];
+    const courses = courseResult.data || [];
 
     return [
       ...staticPages,
       ...categories.map((c) => ({
         url: `${SITE.url}/courses/category/${c.slug}`,
-        lastModified: c.updatedAt,
+        lastModified: new Date(c.updated_at),
         changeFrequency: "weekly" as const,
         priority: 0.8,
       })),
       ...courses.map((c) => ({
         url: `${SITE.url}/courses/${c.slug}`,
-        lastModified: c.updatedAt,
+        lastModified: new Date(c.updated_at),
         changeFrequency: "weekly" as const,
         priority: 0.7,
       })),
     ];
   } catch {
-    // DB unavailable (e.g. build time) — still emit static pages
     return staticPages;
   }
 }

@@ -41,7 +41,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="flex items-center gap-3">
             {session && (
               <span className="hidden text-sm text-gray-500 sm:inline">
-                Signed in as <strong>{session.username}</strong>
+                Signed in as <strong>{session.email}</strong>
               </span>
             )}
             <form action="/api/admin/logout" method="post">
