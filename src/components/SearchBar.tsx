@@ -32,7 +32,9 @@ export default function SearchBar({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
+          style={{ color: "#000000", WebkitTextFillColor: "#000000" }}
           className="w-full px-4 py-3 text-sm outline-none"
+          autoComplete="off"
         />
         <button
           type="submit"
