@@ -16,7 +16,18 @@ import {
 type Params = Promise<{ slug: string }>;
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  try {
+    const { createPublicClient } = await import("@/lib/supabase/public");
+    const db = createPublicClient();
+    const { data } = await db.from("categories").select("slug").limit(200);
+    return (data || []).map((c) => ({ slug: c.slug }));
+  } catch {
+    return [];
+  }
+}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;

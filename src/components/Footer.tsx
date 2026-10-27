@@ -10,10 +10,11 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <Image
-              src="/bridge.png"
+              src="/bridge-sm.png"
               alt="Bridge Collective Opportunities logo"
-              width={512}
-              height={361}
+              width={256}
+              height={180}
+              sizes="192px"
               className="h-12 w-auto rounded-lg bg-white p-1.5"
             />
             <p className="mt-3 text-xl font-bold text-white">BCO Courses</p>

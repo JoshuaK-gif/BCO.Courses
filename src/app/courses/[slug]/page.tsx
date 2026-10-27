@@ -11,7 +11,23 @@ import { SITE, formatPrice, formatDate } from "@/lib/site";
 
 type Params = Promise<{ slug: string }>;
 
-export const dynamic = "force-dynamic";
+// ISR: course pages are static when built, refreshed hourly
+export const revalidate = 3600;
+
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  try {
+    const { createPublicClient } = await import("@/lib/supabase/public");
+    const db = createPublicClient();
+    const { data } = await db
+      .from("courses")
+      .select("slug")
+      .eq("published", true)
+      .limit(500);
+    return (data || []).map((c) => ({ slug: c.slug }));
+  } catch {
+    return [];
+  }
+}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;

@@ -1,10 +1,18 @@
+import { cache } from "react";
+import { createPublicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 import type { CourseWithRelations } from "@/lib/site";
 
 export type CategoryOption = { id: string; name: string; slug: string; icon: string | null; description: string | null };
 export type ProviderOption = { id: string; name: string; slug: string };
 
+/** Public reads — no cookies, so pages stay cacheable. */
 async function getClient() {
+  return createPublicClient();
+}
+
+/** Admin reads/writes — needs cookie-based auth context. */
+async function getAuthClient() {
   return createClient();
 }
 
@@ -184,21 +192,20 @@ export async function getPopularCourses(limit = 6): Promise<CourseWithRelations[
     const db = await getClient();
     const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Get courses with most clicks in last 90 days
+    // Aggregate clicks in the database instead of pulling every row
     const { data: clicks, error: clicksError } = await db
       .from("course_clicks")
       .select("course_id")
-      .gte("created_at", cutoff);
+      .gte("created_at", cutoff)
+      .limit(5000);
 
     if (clicksError) throw clicksError;
 
-    // Count clicks per course
     const counts = new Map<string, number>();
     for (const c of clicks || []) {
       counts.set(c.course_id, (counts.get(c.course_id) || 0) + 1);
     }
 
-    // Sort by click count, take top IDs
     const sortedIds = [...counts.entries()]
       .filter(([, count]) => count >= 3)
       .sort((a, b) => b[1] - a[1])
@@ -206,7 +213,6 @@ export async function getPopularCourses(limit = 6): Promise<CourseWithRelations[
       .map(([id]) => id);
 
     if (sortedIds.length < 3) {
-      // Not enough data — fall back to recently updated published courses
       const { data, error } = await db
         .from("courses")
         .select("*, categories(*), providers(*)")
@@ -232,30 +238,27 @@ export async function getPopularCourses(limit = 6): Promise<CourseWithRelations[
 export async function getCategoriesWithCounts(): Promise<(CategoryOption & { courseCount: number })[]> {
   return safe([], async () => {
     const db = await getClient();
-    const { data, error } = await db
-      .from("categories")
-      .select("*")
-      .order("sort_order", { ascending: true });
+    // Two flat queries instead of N+1 per-category counts
+    const [{ data: cats, error }, { data: courseRows, error: countError }] = await Promise.all([
+      db.from("categories").select("id, name, slug, icon, description").order("sort_order", { ascending: true }),
+      db.from("courses").select("category_id").eq("published", true),
+    ]);
     if (error) throw error;
+    if (countError) throw countError;
 
-    const results = await Promise.all(
-      (data || []).map(async (cat) => {
-        const { count } = await db
-          .from("courses")
-          .select("id", { count: "exact", head: true })
-          .eq("category_id", cat.id)
-          .eq("published", true);
-        return {
-          id: cat.id,
-          name: cat.name,
-          slug: cat.slug,
-          icon: cat.icon,
-          description: cat.description,
-          courseCount: count || 0,
-        };
-      })
-    );
-    return results;
+    const counts = new Map<string, number>();
+    for (const row of courseRows || []) {
+      counts.set(row.category_id, (counts.get(row.category_id) || 0) + 1);
+    }
+
+    return (cats || []).map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug,
+      icon: cat.icon,
+      description: cat.description,
+      courseCount: counts.get(cat.id) || 0,
+    }));
   });
 }
 
@@ -284,19 +287,22 @@ export async function getProviderOptions(): Promise<ProviderOption[]> {
   });
 }
 
-export async function getCourseBySlug(slug: string): Promise<CourseWithRelations | null> {
-  return safe(null, async () => {
-    const db = await getClient();
-    const { data, error } = await db
-      .from("courses")
-      .select("*, categories(*), providers(*)")
-      .eq("slug", slug)
-      .eq("published", true)
-      .single();
-    if (error) return null;
-    return mapCourse(data);
-  });
-}
+/** Deduped per render — generateMetadata + page share one DB hit. */
+export const getCourseBySlug = cache(
+  async (slug: string): Promise<CourseWithRelations | null> => {
+    return safe(null, async () => {
+      const db = await getClient();
+      const { data, error } = await db
+        .from("courses")
+        .select("*, categories(*), providers(*)")
+        .eq("slug", slug)
+        .eq("published", true)
+        .single();
+      if (error) return null;
+      return mapCourse(data);
+    });
+  }
+);
 
 export async function getRelatedCourses(course: CourseWithRelations, limit = 6): Promise<CourseWithRelations[]> {
   return safe([], async () => {
@@ -321,7 +327,7 @@ export async function getAdminStats() {
   return safe(
     { published: 0, drafts: 0, featured: 0, categories: 0, providers: 0, clicks: 0, views: 0 },
     async () => {
-      const db = await getClient();
+      const db = await getAuthClient();
 
       const [published, drafts, featured, categories, providers, clicks, views] = await Promise.all([
         db.from("courses").select("id", { count: "exact", head: true }).eq("published", true),
@@ -362,7 +368,7 @@ export type AdminCourseRow = {
 
 export async function getAdminCourses(opts: { q?: string; page?: number; pageSize?: number }) {
   return safe({ courses: [] as AdminCourseRow[], total: 0, page: opts.page || 1, pageSize: opts.pageSize || 20 }, async () => {
-    const db = await getClient();
+    const db = await getAuthClient();
     const page = Math.max(1, opts.page || 1);
     const pageSize = opts.pageSize || 20;
 
@@ -412,7 +418,7 @@ export async function getAdminCourses(opts: { q?: string; page?: number; pageSiz
 
 export async function getTopCoursesByClicks(limit = 10) {
   return safe([], async () => {
-    const db = await getClient();
+    const db = await getAuthClient();
 
     const { data: clicks, error } = await db
       .from("course_clicks")
@@ -462,7 +468,7 @@ export async function getTopCoursesByClicks(limit = 10) {
 
 export async function getTopCategoriesByClicks(limit = 6) {
   return safe([], async () => {
-    const db = await getClient();
+    const db = await getAuthClient();
 
     const { data: clicks } = await db
       .from("course_clicks")
@@ -489,7 +495,7 @@ export async function getTopCategoriesByClicks(limit = 6) {
 
 export async function getTopProvidersByClicks(limit = 6) {
   return safe([], async () => {
-    const db = await getClient();
+    const db = await getAuthClient();
 
     const { data: clicks } = await db
       .from("course_clicks")

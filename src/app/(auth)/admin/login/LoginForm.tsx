@@ -49,10 +49,11 @@ export default function LoginForm() {
         <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
           <div className="text-center">
             <Image
-              src="/bridge.png"
+              src="/bridge-sm.png"
               alt="Bridge Collective Opportunities logo"
-              width={96}
-              height={96}
+              width={256}
+              height={180}
+              sizes="64px"
               className="mx-auto h-16 w-auto"
               priority
             />

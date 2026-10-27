@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/categories" },
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 export default async function CategoriesPage() {
   const categories = await getCategoriesWithCounts();

@@ -60,11 +60,12 @@ export default function Header() {
         <Link href="/" className="flex items-center gap-3" aria-label={`${SITE.name} home`}>
           <span className="flex h-11 w-16 items-center justify-center overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-200">
             <Image
-              src="/bridge.png"
+              src="/bridge-sm.png"
               alt="Bridge Collective Opportunities logo"
-              width={512}
-              height={361}
+              width={256}
+              height={180}
               priority
+              sizes="64px"
               className="h-9 w-auto"
             />
           </span>
@@ -164,10 +165,11 @@ export default function Header() {
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
               <Link href="/" className="flex items-center gap-3" onClick={startClose}>
                 <Image
-                  src="/bridge.png"
+                  src="/bridge-sm.png"
                   alt="BCO"
-                  width={512}
-                  height={361}
+                  width={256}
+                  height={180}
+                  sizes="48px"
                   className="h-10 w-auto"
                 />
               </Link>

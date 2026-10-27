@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/courses/free" },
 };
 
+// Page param triggers dynamic rendering; without it this view can be cached
 export const dynamic = "force-dynamic";
 
 export default async function FreeCoursesPage({ searchParams }: { searchParams: SP }) {

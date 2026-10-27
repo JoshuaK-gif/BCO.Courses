@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import SearchBar from "@/components/SearchBar";
 import CourseCard from "@/components/CourseCard";
@@ -11,28 +12,27 @@ import {
 } from "@/lib/queries";
 import { SITE } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+// ISR: rebuild every 5 minutes instead of rendering on every request
+export const revalidate = 300;
+
+/** Homepage-only hero preload (avoids wasted preload on every other route). */
+function HeroPreload() {
+  return (
+    <link
+      rel="preload"
+      as="image"
+      href="/hero-classroom-md.avif"
+      imageSrcSet="/hero-classroom-sm.avif 640w, /hero-classroom-md.avif 1024w, /hero-classroom-lg.avif 1920w"
+      imageSizes="100vw"
+    />
+  );
+}
 
 export const metadata: Metadata = {
   title: "BCO Courses — Learn Skills. Unlock Opportunities.",
   description: SITE.description,
   alternates: { canonical: "/" },
 };
-
-const WHY_POINTS = [
-  {
-    title: "Curated for Opportunity Seekers",
-    text: "Every course is organized around the opportunities BCO users pursue — jobs, scholarships, grants, fellowships, internships and freelancing.",
-  },
-  {
-    title: "Clear, Honest Information",
-    text: "Level, duration, certificate and price are shown up front. No fake ratings, no invented benefits.",
-  },
-  {
-    title: "Part of the BCO Ecosystem",
-    text: "BCO Courses works alongside Bridge Collective Opportunities: find the opportunity, build the skills, take action.",
-  },
-];
 
 const OPPORTUNITY_SECTIONS = [
   {
@@ -84,6 +84,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <HeroPreload />
       {/* ---------- Hero ---------- */}
       <section className="relative min-h-[50vh] overflow-hidden text-white sm:min-h-[60vh] lg:min-h-[70vh]">
         {/* Background image — responsive with AVIF/WebP */}
@@ -125,7 +126,9 @@ export default async function HomePage() {
             </p>
 
             <div className="mt-8 max-w-xl">
-              <SearchBar />
+              <Suspense fallback={<div className="h-12 rounded-xl bg-white/10" />}>
+                <SearchBar />
+              </Suspense>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -200,26 +203,6 @@ export default async function HomePage() {
               <CourseCard key={course.id} course={course} />
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ---------- Why BCO Courses ---------- */}
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6" aria-labelledby="why-heading">
-        <h2 id="why-heading" className="text-2xl font-bold text-brand-900">
-          Learning That Connects You to Opportunity
-        </h2>
-        <p className="mt-3 max-w-3xl text-gray-600">
-          Bridge Collective Courses helps you discover learning programs that can strengthen your
-          skills and prepare you for real-world opportunities. We curate and organize courses so
-          you can spend less time searching and more time learning.
-        </p>
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
-          {WHY_POINTS.map((point) => (
-            <div key={point.title} className="rounded-xl border border-gray-200 p-6 transition-all hover:border-teal-200 hover:shadow-sm">
-              <h3 className="font-semibold text-brand-800">{point.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-gray-600">{point.text}</p>
-            </div>
-          ))}
         </div>
       </section>
 

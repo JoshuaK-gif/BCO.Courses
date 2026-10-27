@@ -21,6 +21,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/courses" },
 };
 
+// searchParams opt this route into dynamic rendering when filters are used;
+// the default view can still be cached by the framework.
 export const dynamic = "force-dynamic";
 
 function first(v: string | string[] | undefined): string | undefined {
